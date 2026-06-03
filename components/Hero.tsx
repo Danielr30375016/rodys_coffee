@@ -146,7 +146,7 @@ export default function Hero() {
               {/* Imagen */}
               <div className="relative w-64 h-[360px] sm:w-80 sm:h-[440px]">
                 <Image
-                  src="/empaque-negro.jpg"
+                  src="/empaque-cafe-1.jpeg"
                   alt="Empaque Rodys Coffee"
                   fill
                   sizes="(max-width: 640px) 256px, 320px"

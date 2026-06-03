@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef } from 'react'
-import Image from 'next/image'
 import { motion, useInView } from 'framer-motion'
 import { buildWhatsAppUrl } from '@/lib/config'
 import { SectionBadge } from '@/components/ui/SectionBadge'
@@ -18,35 +17,23 @@ export default function Story() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-          {/* ── Imagen con parallax sutil ── */}
+          {/* ── Video del café ── */}
           <motion.div
             initial={{ opacity: 0, x: -60 }}
             animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -60 }}
             transition={{ duration: 0.8 }}
             className="relative"
           >
-            <div className="relative h-80 sm:h-96 lg:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
-              <Image
-                src="/empaque-campo-1.jpg"
-                alt="Empaque Rodys Coffee en el campo"
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
+            <div className="relative h-80 sm:h-96 lg:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-negro">
+              <video
+                src="/moviendo-cafe-1.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-negro/30 to-transparent" />
-            </div>
-            {/* Mini tarjeta de imagen secundaria — solo desktop */}
-            <div
-              className="absolute -bottom-6 -right-6 w-32 h-32 rounded-xl overflow-hidden
-                border-4 border-crema dark:border-negro shadow-xl hidden lg:block"
-            >
-              <Image
-                src="/empaque-campo-2.jpg"
-                alt="Empaque Rodys Coffee en montaña"
-                fill
-                sizes="128px"
-                className="object-cover"
-              />
+              <div className="absolute inset-0 bg-gradient-to-t from-negro/40 to-transparent pointer-events-none" />
             </div>
           </motion.div>
 

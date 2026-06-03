@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { motion, useInView } from 'framer-motion'
 import { buildWhatsAppUrl } from '@/lib/config'
 import { WhatsAppIcon } from '@/components/ui/WhatsAppIcon'
@@ -12,25 +13,12 @@ interface CardProps {
   title:        string
   description:  string
   badge:        string
+  image:        string
   isBestValue?: boolean
   delay:        number
 }
 
-/** Ícono SVG de bolsa de café */
-function BagIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="28" height="28">
-      <path
-        d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      />
-      <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M16 10a4 4 0 0 1-8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function ProductCard({ title, description, badge, isBestValue = false, delay }: CardProps) {
+function ProductCard({ title, description, badge, image, isBestValue = false, delay }: CardProps) {
   const [grind, setGrind] = useState<Grind>('Molido')
   const ref      = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
@@ -45,7 +33,7 @@ function ProductCard({ title, description, badge, isBestValue = false, delay }: 
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
       transition={{ duration: 0.6, delay }}
       whileHover={{ y: -4 }}
-      className={`relative rounded-2xl p-8 transition-shadow duration-300
+      className={`relative rounded-2xl overflow-hidden transition-shadow duration-300
         hover:shadow-2xl hover:shadow-rojo/20
         ${isBestValue
           ? 'bg-white dark:bg-cafe border-2 border-dorado'
@@ -54,7 +42,7 @@ function ProductCard({ title, description, badge, isBestValue = false, delay }: 
     >
       {/* Shimmer animado en la tarjeta de mejor valor */}
       {isBestValue && (
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-10">
           <motion.div
             animate={{ x: ['-110%', '210%'] }}
             transition={{ duration: 3, repeat: Infinity, repeatDelay: 2.5, ease: 'easeInOut' }}
@@ -63,9 +51,22 @@ function ProductCard({ title, description, badge, isBestValue = false, delay }: 
         </div>
       )}
 
-      <div className="relative z-10">
-        {/* Cabecera: badge + ícono */}
-        <div className="flex items-center justify-between mb-6">
+      {/* Imagen del empaque */}
+      <div className="relative w-full h-64 bg-[#1a0a00]">
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-contain p-4 drop-shadow-2xl"
+          sizes="(max-width: 768px) 100vw, 50vw"
+        />
+        {/* Gradiente suave en la parte inferior para transición al contenido */}
+        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-cafe to-transparent" />
+      </div>
+
+      <div className="relative z-10 p-8 pt-4">
+        {/* Cabecera: badge */}
+        <div className="flex items-center mb-4">
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
             isBestValue
               ? 'bg-dorado text-negro'
@@ -73,7 +74,6 @@ function ProductCard({ title, description, badge, isBestValue = false, delay }: 
           }`}>
             {badge}
           </span>
-          <BagIcon className={isBestValue ? 'text-dorado' : 'text-rojo dark:text-dorado'} />
         </div>
 
         {/* Nombre y descripción */}
@@ -173,12 +173,14 @@ export default function Products() {
             title="Rodys Coffee — 1 Libra"
             description="Café Especial Tostión Media · 500 g · Disponible molido o en grano"
             badge="Café de Colombia"
+            image="/empaque-cafe-1.jpeg"
             delay={0.1}
           />
           <ProductCard
             title="Rodys Coffee — 5 Libras"
             description="Café Especial Tostión Media · 2.5 kg · Disponible molido o en grano"
             badge="⭐ Mejor Valor"
+            image="/empaque-cafe-2.jpeg"
             isBestValue
             delay={0.2}
           />
