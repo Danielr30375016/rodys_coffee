@@ -1,129 +1,128 @@
 'use client'
 
-import { useRef } from 'react'
-import { motion, useInView } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import { SectionBadge } from '@/components/ui/SectionBadge'
 
-const STEPS = [
-  {
-    icon:        '🌱',
-    title:       'Cultivo',
-    description: 'Variedad Castillo en Anolaima, Cundinamarca a 1.750 msnm',
-  },
-  {
-    icon:        '🍒',
-    title:       'Cosecha Selectiva',
-    description: 'Recolección manual en el punto exacto de maduración',
-  },
-  {
-    icon:        '💧',
-    title:       'Beneficio',
-    description: 'Proceso húmedo para resaltar la limpieza y dulzura de la taza',
-  },
-  {
-    icon:        '☀️',
-    title:       'Secado',
-    description: 'Secado natural en camas africanas para potenciar los aromas',
-  },
-  {
-    icon:        '🔥',
-    title:       'Tostión Media',
-    description: 'Perfil de tueste que equilibra acidez, cuerpo y dulzura',
-  },
+/**
+ * Sección "Del Campo a tu Taza" — un video real del proceso completo
+ * (cosecha → despulpado → lavado → secado → tostión → molienda → taza)
+ * que se "ancla" en pantalla mientras el usuario hace scroll: la posición
+ * del scroll controla directamente el currentTime del video, igual que
+ * las páginas de producto tipo Apple.
+ */
+
+const LABELS = [
+  { at: 0.0,  text: 'Cultivado en las montañas de Anolaima' },
+  { at: 0.22, text: 'Cosecha selectiva, grano por grano' },
+  { at: 0.42, text: 'Lavado y secado natural al sol' },
+  { at: 0.68, text: 'Tostión artesanal en pequeños lotes' },
+  { at: 0.88, text: 'Molido fresco, listo para tu taza' },
 ]
 
 export default function Process() {
-  const ref     = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-100px' })
+  const containerRef = useRef<HTMLDivElement>(null)
+  const videoRef      = useRef<HTMLVideoElement>(null)
+  const [videoReady, setVideoReady] = useState(false)
+  const [labelIndex, setLabelIndex] = useState(0)
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ['start start', 'end end'],
+  })
+
+  // Barra de progreso visual
+  const progressWidth = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+  const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.05], [1, 0])
+
+  useMotionValueEvent(scrollYProgress, 'change', (progress) => {
+    const video = videoRef.current
+    if (!video || !videoReady || !video.duration) return
+
+    const clamped = Math.min(Math.max(progress, 0), 1)
+    video.currentTime = clamped * video.duration
+
+    // Determina qué etiqueta de texto mostrar según el progreso
+    let idx = 0
+    for (let i = 0; i < LABELS.length; i++) {
+      if (clamped >= LABELS[i].at) idx = i
+    }
+    setLabelIndex(idx)
+  })
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onLoaded = () => setVideoReady(true)
+    video.addEventListener('loadedmetadata', onLoaded)
+    // Por si ya cargó antes de montar el listener
+    if (video.readyState >= 1) setVideoReady(true)
+    return () => video.removeEventListener('loadedmetadata', onLoaded)
+  }, [])
 
   return (
-    <section id="proceso" ref={ref} className="py-20 lg:py-28 bg-crema dark:bg-negro">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    // Contenedor alto: define cuánto scroll "dura" la secuencia completa.
+    // 400vh ≈ recorre el video completo sin sentirse ni muy rápido ni muy lento.
+    <section id="proceso" ref={containerRef} className="relative h-[400vh] bg-negro">
+      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
 
-        {/* Encabezado */}
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5 }}
-          >
-            <SectionBadge>Nuestro Proceso</SectionBadge>
-          </motion.div>
+        {/* Video de fondo */}
+        <video
+          ref={videoRef}
+          src="/proceso-cafe.mp4"
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
 
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold
-              text-negro dark:text-crema"
-          >
+        {/* Degradados para legibilidad del texto */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/70 pointer-events-none" />
+
+        {/* Encabezado fijo arriba */}
+        <div className="absolute top-8 sm:top-12 left-0 right-0 text-center px-4 z-10">
+          <SectionBadge>Nuestro Proceso</SectionBadge>
+          <h2 className="mt-4 font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-crema">
             Del Campo a tu Taza
-          </motion.h2>
+          </h2>
         </div>
 
-        {/* Timeline
-            xs (< 640px): ícono a la izquierda, texto a la derecha — diseño lineal simple
-            sm+: zigzag alternado con línea central */}
-        <div className="relative">
-          {/* Línea de fondo — solo en sm+ */}
-          <div className="hidden sm:block absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2
-            bg-negro/10 dark:bg-crema/10" />
+        {/* Texto de la etapa actual */}
+        <div className="absolute bottom-20 sm:bottom-24 left-0 right-0 text-center px-6 z-10">
+          <motion.p
+            key={labelIndex}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="font-playfair text-xl sm:text-2xl lg:text-3xl font-semibold text-crema
+              drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]"
+          >
+            {LABELS[labelIndex].text}
+          </motion.p>
+        </div>
 
-          {/* Línea animada — solo en sm+ */}
-          <motion.div
-            className="hidden sm:block absolute left-1/2 top-0 w-0.5 -translate-x-1/2 origin-top
-              bg-gradient-to-b from-rojo to-dorado"
-            initial={{ scaleY: 0 }}
-            animate={isInView ? { scaleY: 1 } : {}}
-            transition={{ duration: 2.2, delay: 0.4, ease: 'easeOut' }}
-            style={{ height: '100%' }}
-          />
-
-          <div className="space-y-10 sm:space-y-14">
-            {STEPS.map((step, i) => {
-              const fromLeft = i % 2 === 0
-              return (
-                <motion.div
-                  key={step.title}
-                  initial={{ opacity: 0, x: fromLeft ? -50 : 50 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.65, delay: 0.3 + i * 0.18 }}
-                  className={`relative
-                    /* xs: siempre fila izq→der */
-                    flex items-start gap-4
-                    /* sm+: zigzag */
-                    sm:items-center sm:gap-6
-                    ${fromLeft ? 'sm:flex-row' : 'sm:flex-row-reverse'}`}
-                >
-                  {/* Ícono circular */}
-                  <div className="relative z-10 shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-full
-                    flex items-center justify-center text-xl sm:text-2xl
-                    bg-rojo dark:bg-dorado shadow-lg shadow-rojo/30 dark:shadow-dorado/20">
-                    {step.icon}
-                  </div>
-
-                  {/* Texto
-                      xs: siempre alineado a la izquierda
-                      sm+: alternado según la columna */}
-                  <div className={`flex-1
-                    text-left
-                    sm:${fromLeft ? 'text-right' : 'text-left'}`}>
-                    <h3 className="font-playfair text-lg sm:text-xl font-bold
-                      text-negro dark:text-crema mb-1">
-                      {step.title}
-                    </h3>
-                    <p className="text-negro/60 dark:text-crema/60 text-sm leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-
-                  {/* Espacio espejo — solo en sm+ para centrar el ícono en la línea */}
-                  <div className="hidden sm:block flex-1" />
-                </motion.div>
-              )
-            })}
+        {/* Barra de progreso */}
+        <div className="absolute bottom-8 sm:bottom-10 left-1/2 -translate-x-1/2 w-48 sm:w-64 z-10">
+          <div className="h-1 rounded-full bg-crema/20 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-rojo to-dorado rounded-full"
+              style={{ width: progressWidth }}
+            />
           </div>
         </div>
+
+        {/* Pista de scroll, solo visible al inicio */}
+        <motion.div
+          style={{ opacity: scrollHintOpacity }}
+          className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-10
+            flex flex-col items-center gap-1 text-crema/70 text-xs font-medium pointer-events-none"
+        >
+          <span>Sigue bajando</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5v14M12 19l-6-6M12 19l6-6" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </motion.div>
       </div>
     </section>
   )

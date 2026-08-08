@@ -6,7 +6,7 @@
 // ─── WhatsApp ────────────────────────────────────────────────────────────────
 
 /** Número en formato internacional sin '+' (ej: 573101234567) */
-export const WHATSAPP_NUMBER = '573XXXXXXXXX'
+export const WHATSAPP_NUMBER = '573026686020'
 
 /**
  * Genera el enlace de WhatsApp con un mensaje predeterminado.
