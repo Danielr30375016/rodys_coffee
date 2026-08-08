@@ -1,16 +1,31 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, useScroll, useTransform, useMotionValueEvent } from 'framer-motion'
 import { SectionBadge } from '@/components/ui/SectionBadge'
 
 /**
- * Sección "Del Campo a tu Taza" — un video real del proceso completo
- * (cosecha → despulpado → lavado → secado → tostión → molienda → taza)
- * que se "ancla" en pantalla mientras el usuario hace scroll: la posición
- * del scroll controla directamente el currentTime del video, igual que
- * las páginas de producto tipo Apple.
+ * Sección "Del Campo a tu Taza" — el proceso completo del café animado
+ * y controlado 100% por el scroll.
+ *
+ * En vez de un <video> (que "tartamudea" al saltar a un punto exacto,
+ * porque los códecs de video solo guardan fotogramas clave y calculan
+ * el resto), usamos una SECUENCIA DE IMÁGENES pre-generada a partir del
+ * video (una foto por cada fotograma) y las dibujamos en un <canvas>
+ * según el progreso del scroll. Cada fotograma se muestra al instante,
+ * sin ningún salto ni recálculo — es la misma técnica que usan las
+ * páginas de producto de Apple.
  */
+
+const TOTAL_FRAMES = 120
+const FRAME_PATH = (i: number) => `/proceso-frames/frame_${String(i).padStart(3, '0')}.jpg`
+
+// En pantallas angostas (celular), el video horizontal se recorta por los
+// lados para llenar la pantalla. FOCUS_X decide qué parte horizontal del
+// fotograma queda centrada: 0.5 = centro exacto, menor que 0.5 = más hacia
+// la izquierda, mayor que 0.5 = más hacia la derecha. Ajusta y prueba en
+// tu celular hasta que el sujeto principal de cada escena quede bien encuadrado.
+const FOCUS_X = 0.5
 
 const LABELS = [
   { at: 0.0,  text: 'Cultivado en las montañas de Anolaima' },
@@ -22,8 +37,11 @@ const LABELS = [
 
 export default function Process() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef      = useRef<HTMLVideoElement>(null)
-  const [videoReady, setVideoReady] = useState(false)
+  const canvasRef     = useRef<HTMLCanvasElement>(null)
+  const imagesRef      = useRef<HTMLImageElement[]>([])
+  const currentFrameRef = useRef(1)
+
+  const [loadedCount, setLoadedCount] = useState(0)
   const [labelIndex, setLabelIndex] = useState(0)
 
   const { scrollYProgress } = useScroll({
@@ -31,18 +49,98 @@ export default function Process() {
     offset: ['start start', 'end end'],
   })
 
-  // Barra de progreso visual
-  const progressWidth = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
+  const progressWidth     = useTransform(scrollYProgress, [0, 1], ['0%', '100%'])
   const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.05], [1, 0])
 
+  // Dibuja un fotograma específico en el canvas, ajustado tipo "object-fit: cover"
+  // (llena toda la pantalla, recortando los bordes) con suavizado de alta calidad
+  const drawFrame = useCallback((frameNumber: number) => {
+    const canvas = canvasRef.current
+    const img = imagesRef.current[frameNumber - 1]
+    if (!canvas || !img || !img.complete || img.naturalWidth === 0) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    const cssWidth = canvas.width / dpr
+    const cssHeight = canvas.height / dpr
+    const canvasRatio = cssWidth / cssHeight
+    const imgRatio = img.naturalWidth / img.naturalHeight
+
+    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number
+    if (imgRatio > canvasRatio) {
+      // La imagen es más ancha que la pantalla: ajusta por alto y recorta los lados,
+      // usando FOCUS_X para decidir qué franja horizontal queda visible
+      drawHeight = cssHeight
+      drawWidth = drawHeight * imgRatio
+      offsetX = (cssWidth - drawWidth) * FOCUS_X
+      offsetY = 0
+    } else {
+      // La imagen es más angosta que la pantalla: ajusta por ancho y recorta arriba/abajo
+      drawWidth = cssWidth
+      drawHeight = drawWidth / imgRatio
+      offsetX = 0
+      offsetY = (cssHeight - drawHeight) / 2
+    }
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.clearRect(0, 0, cssWidth, cssHeight)
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight)
+  }, [])
+
+  // Precarga todas las imágenes. La primera se dibuja apenas está lista.
+  useEffect(() => {
+    let cancelled = false
+    let loaded = 0
+
+    for (let i = 1; i <= TOTAL_FRAMES; i++) {
+      const img = new Image()
+      img.src = FRAME_PATH(i)
+      img.onload = () => {
+        if (cancelled) return
+        loaded += 1
+        setLoadedCount(loaded)
+        if (i === 1) drawFrame(1)
+      }
+      imagesRef.current[i - 1] = img
+    }
+
+    return () => { cancelled = true }
+  }, [drawFrame])
+
+  // Ajusta el tamaño del canvas al panel (no a pantalla completa), con soporte retina
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const wrapper = canvas?.parentElement
+    if (!canvas || !wrapper) return
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1
+      const cssWidth = wrapper.clientWidth
+      const cssHeight = wrapper.clientHeight
+      canvas.width = cssWidth * dpr
+      canvas.height = cssHeight * dpr
+      const ctx = canvas.getContext('2d')
+      ctx?.setTransform(1, 0, 0, 1, 0, 0)
+      ctx?.scale(dpr, dpr)
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
+      drawFrame(currentFrameRef.current)
+    }
+
+    resize()
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [drawFrame])
+
   useMotionValueEvent(scrollYProgress, 'change', (progress) => {
-    const video = videoRef.current
-    if (!video || !videoReady || !video.duration) return
-
     const clamped = Math.min(Math.max(progress, 0), 1)
-    video.currentTime = clamped * video.duration
+    const frame = Math.min(TOTAL_FRAMES, Math.max(1, Math.round(clamped * (TOTAL_FRAMES - 1)) + 1))
+    currentFrameRef.current = frame
+    drawFrame(frame)
 
-    // Determina qué etiqueta de texto mostrar según el progreso
     let idx = 0
     for (let i = 0; i < LABELS.length; i++) {
       if (clamped >= LABELS[i].at) idx = i
@@ -50,31 +148,22 @@ export default function Process() {
     setLabelIndex(idx)
   })
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    const onLoaded = () => setVideoReady(true)
-    video.addEventListener('loadedmetadata', onLoaded)
-    // Por si ya cargó antes de montar el listener
-    if (video.readyState >= 1) setVideoReady(true)
-    return () => video.removeEventListener('loadedmetadata', onLoaded)
-  }, [])
+  const isFullyLoaded = loadedCount >= TOTAL_FRAMES
 
   return (
-    // Contenedor alto: define cuánto scroll "dura" la secuencia completa.
-    // 400vh ≈ recorre el video completo sin sentirse ni muy rápido ni muy lento.
+    // 400vh de alto define cuánto scroll "dura" la secuencia completa.
     <section id="proceso" ref={containerRef} className="relative h-[400vh] bg-negro">
-      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
+      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center bg-negro">
 
-        {/* Video de fondo */}
-        <video
-          ref={videoRef}
-          src="/proceso-cafe.mp4"
-          muted
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {/* Canvas a pantalla completa */}
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+        {/* Indicador de carga sutil mientras se precargan los fotogramas restantes */}
+        {!isFullyLoaded && (
+          <div className="absolute top-4 right-4 z-20 text-crema/50 text-xs font-medium">
+            Cargando {Math.round((loadedCount / TOTAL_FRAMES) * 100)}%
+          </div>
+        )}
 
         {/* Degradados para legibilidad del texto */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/70 pointer-events-none" />

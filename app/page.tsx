@@ -12,12 +12,12 @@ export default function Home() {
   return (
     <main>
       <Navbar />
+      <Process />
       <Hero />
       <Attributes />
       <Story />
       <Products />
       <CupScore />
-      <Process />
       <CTA />
       <Footer />
     </main>
