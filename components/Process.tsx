@@ -41,6 +41,9 @@ export default function Process() {
   const imagesRef      = useRef<HTMLImageElement[]>([])
   const currentFrameRef = useRef(1)
 
+  const rafRef          = useRef<number | null>(null)
+  const pendingFrameRef = useRef(1)
+
   const [loadedCount, setLoadedCount] = useState(0)
   const [labelIndex, setLabelIndex] = useState(0)
 
@@ -139,24 +142,50 @@ export default function Process() {
     const clamped = Math.min(Math.max(progress, 0), 1)
     const frame = Math.min(TOTAL_FRAMES, Math.max(1, Math.round(clamped * (TOTAL_FRAMES - 1)) + 1))
     currentFrameRef.current = frame
-    drawFrame(frame)
+    pendingFrameRef.current = frame
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        drawFrame(pendingFrameRef.current)
+      })
+    }
 
     let idx = 0
     for (let i = 0; i < LABELS.length; i++) {
       if (clamped >= LABELS[i].at) idx = i
     }
-    setLabelIndex(idx)
+    setLabelIndex((prev) => (prev === idx ? prev : idx))
   })
+
+  // Agrupa los dibujos: los eventos de scroll llegan varias veces por fotograma de
+  // pantalla y dibujar en cada uno hacía que el compositor presentara el canvas a
+  // medio actualizar (mitad fotograma viejo, mitad nuevo = la pantalla "partida").
+  // Con rAF se dibuja como mucho una vez por fotograma, justo antes de pintar.
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
 
   const isFullyLoaded = loadedCount >= TOTAL_FRAMES
 
   return (
     // 400vh de alto define cuánto scroll "dura" la secuencia completa.
     <section id="proceso" ref={containerRef} className="relative h-[400vh] bg-negro">
-      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center bg-negro">
+      {/* `svh` = altura del viewport con la barra del navegador VISIBLE. En móvil,
+          `h-screen` (100vh) es más alto que el área útil: la barra de progreso y la
+          pista de scroll quedaban fuera de pantalla, y al ocultarse/reaparecer la
+          barra del navegador se disparaba un `resize` que limpiaba y redibujaba el
+          canvas — el salto que se ve al desplazarse. Con `svh` la altura no cambia.
+          `supports-[]` deja `h-screen` de respaldo en navegadores sin `svh`. */}
+      <div className="sticky top-0 h-screen supports-[height:100svh]:h-[100svh]
+        w-full overflow-hidden flex items-center justify-center bg-negro">
 
         {/* Canvas a pantalla completa */}
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full transform-gpu will-change-transform"
+        />
 
         {/* Indicador de carga sutil mientras se precargan los fotogramas restantes */}
         {!isFullyLoaded && (

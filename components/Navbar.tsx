@@ -47,6 +47,7 @@ export default function Navbar() {
    * resolver primero el contraste sobre los fotogramas de `Process`.
    */
   return (
+    <>
     <motion.nav
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -150,36 +151,50 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Menú móvil con slide-down */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            id="menu-movil"
-            key="mobile-menu"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{    height: 0,    opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="md:hidden overflow-hidden bg-crema dark:bg-negro
-              border-t border-rojo/20 shadow-xl shadow-negro/30"
-          >
-            <nav className="px-6 py-2 flex flex-col">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-base font-medium text-negro dark:text-crema
-                    hover:text-rojo dark:hover:text-dorado transition-colors py-3
-                    border-b border-negro/5 dark:border-crema/5 last:border-0"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.nav>
+
+    {/* Menú móvil — DELIBERADAMENTE FUERA de <motion.nav>.
+        Framer Motion aplica un `transform` al nav para animar su entrada, y un
+        ancestro con `transform` se convierte en el bloque contenedor de sus
+        descendientes `position: fixed`: el panel dejaba de anclarse al viewport
+        y quedaba atrapado en la capa del nav, que en móvil no se recomponía
+        hasta forzar un repintado completo (bajar al final de la página y subir).
+        Como hermano del nav, se ancla al viewport de verdad.
+
+        Tampoco se anima la altura: `height: 0 -> 'auto'` obliga a medir el
+        contenido y dentro del nav esa medida daba 0 (menú abierto pero
+        invisible). Solo opacidad y desplazamiento. */}
+    <AnimatePresence>
+      {menuOpen && (
+        <motion.div
+          id="menu-movil"
+          key="mobile-menu"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{    opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="md:hidden fixed top-16 left-0 right-0 z-40
+            bg-crema dark:bg-negro
+            border-t border-rojo/20 shadow-xl shadow-negro/30"
+        >
+          <nav className="px-6 py-2 flex flex-col
+            max-h-[calc(100svh-4rem)] overflow-y-auto overscroll-contain">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-base font-medium text-negro dark:text-crema
+                  hover:text-rojo dark:hover:text-dorado transition-colors py-3
+                  border-b border-negro/5 dark:border-crema/5 last:border-0"
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }
