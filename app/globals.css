@@ -2,9 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Smooth scroll global */
+/* Smooth scroll global.
+   scroll-padding-top compensa el navbar fijo (h-16 = 4rem): sin esto, al
+   navegar a una ancla (#historia, #productos...) el titulo de la seccion
+   queda escondido debajo de la barra. */
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 4rem;
+}
+
+/* Quien tenga activado "reducir movimiento" en el sistema no deberia sufrir
+   el scroll animado de 400vh de la seccion Process. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 @layer base {

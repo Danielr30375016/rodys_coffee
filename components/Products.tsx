@@ -9,8 +9,13 @@ import { SectionBadge } from '@/components/ui/SectionBadge'
 
 type Grind = 'Molido' | 'En Grano'
 
+const GRIND_OPTIONS: Grind[] = ['Molido', 'En Grano']
+
 interface CardProps {
-  title:        string
+  /** Presentación comercial, p. ej. '1 Libra' */
+  size:         string
+  /** Peso real, se incluye en el mensaje de WhatsApp */
+  weight:       string
   description:  string
   badge:        string
   image:        string
@@ -18,13 +23,27 @@ interface CardProps {
   delay:        number
 }
 
-function ProductCard({ title, description, badge, image, isBestValue = false, delay }: CardProps) {
+function ProductCard({
+  size,
+  weight,
+  description,
+  badge,
+  image,
+  isBestValue = false,
+  delay,
+}: CardProps) {
   const [grind, setGrind] = useState<Grind>('Molido')
   const ref      = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
 
-  const message = `Hola! Quiero pedir ${title} [${grind}] ☕`
-  const url     = buildWhatsAppUrl(message)
+  const title = `Rodys Coffee — ${size}`
+
+  // Mensaje que le llega al vendedor por WhatsApp. Los asteriscos los renderiza
+  // WhatsApp como negrita, así el pedido se lee de un vistazo en el chat.
+  const message =
+    `Hola! Quiero pedir *${size}* de Rodys Coffee (${weight}) ` +
+    `en presentación *${grind}*. ☕`
+  const url = buildWhatsAppUrl(message)
 
   return (
     <motion.article
@@ -55,7 +74,7 @@ function ProductCard({ title, description, badge, image, isBestValue = false, de
       <div className="relative w-full h-64 bg-[#1a0a00]">
         <Image
           src={image}
-          alt={title}
+          alt={`Empaque de ${title}`}
           fill
           className="object-contain p-4 drop-shadow-2xl"
           sizes="(max-width: 768px) 100vw, 50vw"
@@ -84,33 +103,55 @@ function ProductCard({ title, description, badge, image, isBestValue = false, de
           {description}
         </p>
 
-        {/* Opciones molido / en grano */}
-        <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-negro/60 dark:text-crema/60 mb-3">
-            Presentación
-          </p>
+        {/* ── Selector: molido o en grano ── */}
+        <fieldset className="mb-5">
+          <legend className="text-xs font-semibold uppercase tracking-wider
+            text-negro/60 dark:text-crema/60 mb-3">
+            ¿Cómo lo quieres?
+          </legend>
           <div className="flex gap-3">
-            {(['Molido', 'En Grano'] as Grind[]).map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setGrind(opt)}
-                className={`flex-1 py-2 px-3 rounded-full text-sm font-medium border-2 transition-all duration-200 ${
-                  grind === opt
-                    ? 'bg-rojo border-rojo text-white dark:bg-dorado dark:border-dorado dark:text-negro'
-                    : 'border-negro/20 dark:border-crema/20 text-negro/60 dark:text-crema/60 hover:border-rojo dark:hover:border-dorado'
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+            {GRIND_OPTIONS.map((opt) => {
+              const selected = grind === opt
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setGrind(opt)}
+                  aria-pressed={selected}
+                  className={`flex-1 flex items-center justify-center gap-1.5
+                    py-2.5 px-3 rounded-full text-sm font-semibold border-2
+                    transition-all duration-200 ${
+                    selected
+                      ? 'bg-rojo border-rojo text-white shadow-md shadow-rojo/25 dark:bg-dorado dark:border-dorado dark:text-negro dark:shadow-dorado/25'
+                      : 'border-negro/20 dark:border-crema/20 text-negro/60 dark:text-crema/60 hover:border-rojo dark:hover:border-dorado'
+                  }`}
+                >
+                  {selected && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3"
+                        strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                  {opt}
+                </button>
+              )
+            })}
           </div>
-        </div>
+        </fieldset>
+
+        {/* Resumen del pedido — confirma la elección antes de salir a WhatsApp */}
+        <p className="text-xs text-negro/50 dark:text-crema/50 mb-4 text-center">
+          Tu pedido: <span className="font-semibold text-rojo dark:text-dorado">
+            {size} · {grind}
+          </span>
+        </p>
 
         {/* Botón WhatsApp */}
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Pedir ${size} ${grind} por WhatsApp`}
           className={`relative overflow-hidden w-full flex items-center justify-center gap-2
             py-4 rounded-full font-semibold transition-all duration-300 group
             ${isBestValue
@@ -119,7 +160,7 @@ function ProductCard({ title, description, badge, image, isBestValue = false, de
             }`}
         >
           <WhatsAppIcon />
-          <span className="relative z-10">Pedir por WhatsApp</span>
+          <span className="relative z-10">Pedir {grind} por WhatsApp</span>
           {/* Shimmer hover */}
           <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full
             transition-transform duration-700
@@ -163,21 +204,23 @@ export default function Products() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-negro/60 dark:text-crema/60 text-lg max-w-xl mx-auto"
           >
-            Café tostado medio, disponible molido o en grano
+            Café tostado medio. Elige molido o en grano y te lo despachamos así.
           </motion.p>
         </div>
 
         {/* Grid de tarjetas */}
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <ProductCard
-            title="Rodys Coffee — 1 Libra"
+            size="1 Libra"
+            weight="500 g"
             description="Café Especial Tostión Media · 500 g · Disponible molido o en grano"
             badge="Café de Colombia"
             image="/empaque-cafe-1.jpeg"
             delay={0.1}
           />
           <ProductCard
-            title="Rodys Coffee — 5 Libras"
+            size="5 Libras"
+            weight="2.5 kg"
             description="Café Especial Tostión Media · 2.5 kg · Disponible molido o en grano"
             badge="⭐ Mejor Valor"
             image="/empaque-cafe-2.jpeg"

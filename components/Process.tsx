@@ -169,15 +169,17 @@ export default function Process() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/70 pointer-events-none" />
 
         {/* Encabezado fijo arriba */}
-        <div className="absolute top-8 sm:top-12 left-0 right-0 text-center px-4 z-10">
-          <SectionBadge>Nuestro Proceso</SectionBadge>
-          <h2 className="mt-4 font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-crema">
+        <div className="absolute top-20 sm:top-24 left-0 right-0 text-center px-4 z-10">
+          {/* 'inverted' fijo: Process es siempre oscura, sin importar el tema */}
+          <SectionBadge inverted>Nuestro Proceso</SectionBadge>
+          <h2 className="mt-4 font-playfair text-3xl sm:text-4xl lg:text-5xl font-bold text-crema
+            drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
             Del Campo a tu Taza
           </h2>
         </div>
 
         {/* Texto de la etapa actual */}
-        <div className="absolute bottom-20 sm:bottom-24 left-0 right-0 text-center px-6 z-10">
+        <div className="absolute bottom-28 sm:bottom-32 left-0 right-0 text-center px-6 z-10">
           <motion.p
             key={labelIndex}
             initial={{ opacity: 0, y: 16 }}
@@ -203,7 +205,7 @@ export default function Process() {
         {/* Pista de scroll, solo visible al inicio */}
         <motion.div
           style={{ opacity: scrollHintOpacity }}
-          className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 z-10
+          className="absolute bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 z-10
             flex flex-col items-center gap-1 text-crema/70 text-xs font-medium pointer-events-none"
         >
           <span>Sigue bajando</span>
