@@ -25,14 +25,23 @@ export default function Story() {
             className="relative"
           >
             <div className="relative h-80 sm:h-96 lg:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-negro">
-              <video
-                src="/moviendo-cafe-1.mp4"
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-              />
+              {/* El video pesa ~5.6 MB. Sin `src` (solo se asigna cuando la sección
+                  entra en viewport, vía `isInView`) el navegador no descarga nada
+                  hasta que el usuario esté por llegar aquí — con conexión lenta,
+                  antes tocaba bajarlo completo aunque estuviera debajo de Process
+                  (400vh) y del Hero. `preload="none"` evita que además precargue
+                  metadata mientras tanto. */}
+              {isInView && (
+                <video
+                  src="/moviendo-cafe-1.mp4"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-negro/40 to-transparent pointer-events-none" />
             </div>
           </motion.div>

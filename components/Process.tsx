@@ -18,7 +18,7 @@ import { SectionBadge } from '@/components/ui/SectionBadge'
  */
 
 const TOTAL_FRAMES = 120
-const FRAME_PATH = (i: number) => `/proceso-frames/frame_${String(i).padStart(3, '0')}.jpg`
+const FRAME_PATH = (i: number) => `/proceso-frames/frame_${String(i).padStart(3, '0')}.webp`
 
 // En pantallas angostas (celular), el video horizontal se recorta por los
 // lados para llenar la pantalla. FOCUS_X decide qué parte horizontal del
